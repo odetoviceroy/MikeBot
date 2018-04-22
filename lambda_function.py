@@ -1,4 +1,19 @@
 from __future__ import print_function
+from watson_developer_cloud import ToneAnalyzerV3
+import twilio
+
+my_sample_text = "I don't feel like I can do this. I'm really afraid of having to go present this project tomorrow. I don't want \
+to make it seem like I'm chickening out but I'm super iffy about my project as of now. Maybe I need some rest. I feel like I \
+ might vomit. Let's hope for a good ending! I am anxious about this."
+
+tone_analyzer = ToneAnalyzerV3(
+    version='2017-09-21',
+    username='48a3c0bf-f166-4fd8-b922-31bf3e185b45',
+    password='4Mre0RmnW67A',
+    #url='https://gateway-fra.watsonplatform.net/tone-analyzer/api'
+)
+t_username = "ACf71b3103510c65ab8a2661f03e5cf837"
+t_pw = "1514d431d65f8e36dc56d0b38eb54596"
 
 # --------------- Helpers that build all of the responses ----------------------
 
@@ -22,12 +37,16 @@ def build_speechlet_response(title, output, reprompt_text, should_end_session):
         'shouldEndSession': should_end_session
     }
 
+
 def build_response(session_attributes, speechlet_response):
     return {
         'version': '1.0',
         'sessionAttributes': session_attributes,
         'response': speechlet_response
     }
+
+
+# --------------- Functions that control the skill's behavior ------------------
 
 def get_welcome_response():
     """ If we wanted to initialize the session to have some attributes we could
@@ -36,19 +55,72 @@ def get_welcome_response():
 
     session_attributes = {}
     card_title = "Welcome"
-    speech_output = "Welcome to the Alexa Skills Kit sample. " \
-                    "Please tell me your favorite color by saying, " \
-                    "my favorite color is red"
+    speech_output = "Welcome to the Mike Bot Demo. " \
+                    "You may begin our session by telling me your current mood. " \
+                    "I'm feeling anxious today."
     # If the user either does not reply to the welcome message or says something
     # that is not understood, they will be prompted again with this text.
-    
-    reprompt_text = "Please tell me your favorite color by saying, " \
-                    "my favorite color is red."
+    reprompt_text = "You may begin our session by mentioning your current mood as " \
+                    "I feel sad."
     should_end_session = False
     return build_response(session_attributes, build_speechlet_response(
         card_title, speech_output, reprompt_text, should_end_session))
-        
-        
+
+
+def handle_session_end_request():
+    card_title = "Session Ended"
+    speech_output = "Thank you for trying the Mike Bot demo. " \
+                    "Have a nice day! "
+    # Setting this to true ends the session and exits the skill.
+    should_end_session = True
+    return build_response({}, build_speechlet_response(
+        card_title, speech_output, None, should_end_session))
+
+
+'''
+def create_favorite_color_attributes(favorite_color):
+    return {"favoriteColor": favorite_color}
+'''
+
+def set_mood_in_session(intent, session):
+    card_title = intent['name']
+    session_attributes = {}
+    should_end_session = False
+    if 'myMood' in intent['slots']:
+        myMood = intent['slots']['myMood']['value']
+        # session_attributes = create_favorite_color_attributes(favorite_color)
+        speech_output = "I now know your mood is " + \
+                        myMood + \
+                        ". Would you mind telling me what's wrong?"
+        reprompt_text = "Would you mind telling me what's wrong?"
+    else:
+        speech_output = "I'm not sure what your mood is. " \
+                        "Please try again."
+        reprompt_text = "I'm not sure what your favorite color is. " \
+                        "You may begin our session by saying " \
+                         "I feel anxious."
+    return build_response(session_attributes, build_speechlet_response(
+        card_title, speech_output, reprompt_text, should_end_session))
+
+def get_monologue(intent, session):
+    session_attributes = {}
+
+    slots_map = intent['slots']
+
+
+    speech_output = my_sample_text
+    reprompt_text = None
+    should_end_session = True
+    return build_response(session_attributes, build_speechlet_response(
+        intent['name'], speech_output, reprompt_text, should_end_session))
+
+    # Setting reprompt_text to None signifies that we do not want to reprompt
+    # the user. If the user does not respond or says something that is not
+    # understood, the session will end.
+    return build_response(session_attributes, build_speechlet_response(
+        intent['name'], speech_output, reprompt_text, should_end_session))
+
+
 # --------------- Events ------------------
 
 def on_session_started(session_started_request, session):
@@ -79,10 +151,10 @@ def on_intent(intent_request, session):
     intent_name = intent_request['intent']['name']
 
     # Dispatch to your skill's intent handlers
-    if intent_name == "MyColorIsIntent":
-        return set_color_in_session(intent, session)
-    elif intent_name == "WhatsMyColorIntent":
-        return get_color_from_session(intent, session)
+    if intent_name == "MyMoodIsIntent":
+        return set_mood_in_session(intent, session)
+    elif intent_name == "MyDayConsistsIntent":
+        return get_monologue(intent, session)
     elif intent_name == "AMAZON.HelpIntent":
         return get_welcome_response()
     elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
